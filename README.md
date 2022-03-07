@@ -20,9 +20,6 @@ import fylr_lib_plugin_python3.sequence as sequence
 
 ## FylrSequence class
 
-<<<<<<< HEAD
-<!-- todo -->
-=======
 This class handles multiple sequences using specialized objects. This means, in the datamodel there must be an additional objecttype which stores the latest used unique sequential number. Each objects represents a sequence
 
 The objecttype has the following requirements:
@@ -117,5 +114,3 @@ The combination of the two return values is an indicator how the plugin should p
     }
     ```
     - in this case, the plugin should not try to repeat the update request, but return an error to the fylr itself
-
->>>>>>> 9ba98ba565f110595b31984eda9eeb12593edebe
