@@ -9,11 +9,12 @@ import requests
 
 # helper functions
 
-def write_tmp_file(name, lines, new_file=False, dir='/tmp/'):
+def write_tmp_file(name, lines, new_file=False, skip_datetime=False, dir='/tmp/'):
     if not isinstance(lines, list):
         lines = [lines]
 
-    lines = [str(datetime.now()), ''] + lines
+    if not skip_datetime:
+        lines = ['// ' + str(datetime.now())] + lines
 
     if not dir.endswith('/'):
         dir += '/'
@@ -81,22 +82,30 @@ def dumpjs(js, indent=4):
 # plugin response functions
 
 
-def stdout(line):
+def stdout(line, log_in_tmp_file=False):
+    if log_in_tmp_file:
+        write_tmp_file('stdout.json', line, new_file=True)
     sys.stdout.write(line)
     sys.stdout.write('\n')
 
 
-def stderr(line):
+def stderr(line, log_in_tmp_file=False):
+    if log_in_tmp_file:
+        write_tmp_file('stderr.json', line, new_file=True)
     sys.stderr.write(line)
     sys.stderr.write('\n')
 
 
-def return_response(response):
+def return_response(response, log_in_tmp_file=False):
+    if log_in_tmp_file:
+        write_tmp_file('return_response.json', dumpjs(response), new_file=True)
     stdout(dumpjs(response))
     exit(0)
 
 
-def return_error_response(error):
+def return_error_response(error, log_in_tmp_file=False):
+    if log_in_tmp_file:
+        write_tmp_file('return_error_response.json', error, new_file=True)
     stderr(error)
     exit(1)
 
@@ -109,18 +118,60 @@ def fylr_api_headers(access_token):
     }
 
 
-def get_from_api(api_url, path, access_token):
+def get_from_api(api_url, path, access_token, log_in_tmp_file=False):
+
+    if log_in_tmp_file:
+        write_tmp_file(
+            'get_from_api.json',
+            [
+                '// api_url: ' + api_url,
+            ],
+            new_file=True
+        )
+
     resp = requests.get(
         api_url + '/' + path,
         headers=fylr_api_headers(access_token))
 
+    if log_in_tmp_file:
+        write_tmp_file(
+            'get_from_api.json',
+            [
+                '// status_code: ' + str(resp.status_code),
+                resp.text
+            ],
+            new_file=False
+        )
+
     return resp.text, resp.status_code
 
 
-def post_to_api(api_url, path, access_token, payload=None):
+def post_to_api(api_url, path, access_token, payload=None, log_in_tmp_file=False):
+
+    if log_in_tmp_file:
+        write_tmp_file(
+            'post_to_api.json',
+            [
+                '// api_url: ' + api_url,
+                '// payload:',
+                payload,
+            ],
+            new_file=True
+        )
+
     resp = requests.post(
         api_url + '/' + path,
         headers=fylr_api_headers(access_token),
         data=payload)
+
+    if log_in_tmp_file:
+        write_tmp_file(
+            'post_to_api.json',
+            [
+                '// status_code: ' + str(resp.status_code),
+                resp.text
+            ],
+            new_file=False
+        )
 
     return resp.text, resp.status_code
