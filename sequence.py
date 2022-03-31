@@ -6,12 +6,13 @@ import json
 
 class FylrSequence(object):
 
-    def __init__(self, api_url, ref, access_token, sequence_objecttype, sequence_ref_field, sequence_num_field) -> None:
+    def __init__(self, api_url, ref, access_token, sequence_objecttype, sequence_ref_field, sequence_num_field, log_in_tmp_file=False) -> None:
         self.api_url = api_url
         while self.api_url.endswith('/'):
             self.api_url = self.api_url[:-1]
         self.ref = ref
         self.access_token = access_token
+        self.log_in_tmp_file = log_in_tmp_file
 
         self.current_number = 1
         self.version = 1
@@ -31,11 +32,11 @@ class FylrSequence(object):
 
     @util.handle_exceptions
     def get_from_api(self, path):
-        return util.get_from_api(self.api_url, path, self.access_token)
+        return util.get_from_api(self.api_url, path, self.access_token, log_in_tmp_file=self.log_in_tmp_file)
 
     @util.handle_exceptions
     def post_to_api(self, path, payload=None):
-        return util.post_to_api(self.api_url, path, self.access_token, payload)
+        return util.post_to_api(self.api_url, path, self.access_token, payload=payload, log_in_tmp_file=self.log_in_tmp_file)
 
     @util.handle_exceptions
     def get_next_number(self) -> int:
