@@ -15,5 +15,4 @@ In python code:
 
 ```!python
 import fylr_lib_plugin_python3.util as util
-import fylr_lib_plugin_python3.sequence as sequence
 ```
