@@ -109,6 +109,16 @@ def return_error_response(error, log_in_tmp_file=False):
     stderr(error)
     exit(1)
 
+
+def return_empty_objects():
+    # special helper method: used when no changes on any objects can or should be done
+    # fylr only checks and updates objects that are returned by the plugin
+    # empty object array in response => nothing to do
+    return_response({
+        'objects': []
+    })
+
+
 # fylr api functions
 
 
