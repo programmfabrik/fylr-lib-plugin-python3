@@ -19,7 +19,10 @@ def write_tmp_file(name, lines, new_file=False, skip_datetime=False, dir='/tmp/'
     if not dir.endswith('/'):
         dir += '/'
     with open(dir + name, 'w' if new_file else 'a') as tmp:
-        tmp.writelines(map(lambda l: str(l) + '\n', lines))
+        tmp.writelines(map(
+            lambda l: (dumpjs(l) if (isinstance(l, dict)
+                       or isinstance(l, list)) else str(l)) + '\n',
+            lines))
 
 
 def handle_exceptions(func):
