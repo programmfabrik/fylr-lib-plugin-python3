@@ -10,7 +10,13 @@ import requests
 # helper functions
 
 
-def write_tmp_file(name, lines, new_file=False, skip_datetime=False, dir='/tmp/'):
+def write_tmp_file(
+    name: str,
+    lines: list[str],
+    new_file: bool = False,
+    skip_datetime: bool = False,
+    dir: str = '/tmp/',
+):
     if not isinstance(lines, list):
         lines = [lines]
 
@@ -51,8 +57,12 @@ def handle_exceptions(func):
     return func_wrapper
 
 
-def get_json_value(js, path, expected=False, split_char='.'):
-
+def get_json_value(
+    js: dict[str],
+    path: str,
+    expected: bool = False,
+    split_char: str = '.',
+):
     current = js
     path_parts = []
     current_part = ''
@@ -86,35 +96,51 @@ def get_json_value(js, path, expected=False, split_char='.'):
     return current
 
 
-def dumpjs(js, indent=4):
+def dumpjs(js: dict[str], indent: int = 4) -> str:
     return json.dumps(js, indent=indent)
+
+
+def join_url_path(path_elements: list) -> str:
+    cleaned_path_elements = []
+    for p in path_elements:
+        p = str(p).strip()
+        while p.startswith('/'):
+            p = p[1:]
+        while p.endswith('/'):
+            p = p[:-1]
+        if p == '':
+            continue
+
+        cleaned_path_elements.append(p)
+
+    return '/'.join(cleaned_path_elements)
 
 
 # plugin response functions
 
 
-def stdout(line, log_in_tmp_file=False):
+def stdout(line: str, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
         write_tmp_file('stdout.json', line, new_file=True)
     sys.stdout.write(line)
     sys.stdout.write('\n')
 
 
-def stderr(line, log_in_tmp_file=False):
+def stderr(line: str, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
         write_tmp_file('stderr.json', line, new_file=True)
     sys.stderr.write(line)
     sys.stderr.write('\n')
 
 
-def return_response(response, log_in_tmp_file=False):
+def return_response(response: dict[str], log_in_tmp_file: bool = False):
     if log_in_tmp_file:
         write_tmp_file('return_response.json', dumpjs(response), new_file=True)
     stdout(dumpjs(response))
     exit(0)
 
 
-def return_error_response(error, log_in_tmp_file=False):
+def return_error_response(error: str, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
         write_tmp_file('return_error_response.json', error, new_file=True)
     stderr(error)
@@ -135,13 +161,18 @@ def return_empty_objects():
 # fylr api functions
 
 
-def fylr_api_headers(access_token):
+def fylr_api_headers(access_token: str) -> dict[str]:
     return {
         'authorization': 'Bearer ' + access_token,
     }
 
 
-def get_from_api(api_url, path, access_token, log_in_tmp_file=False):
+def get_from_api(
+    api_url: str,
+    path: str,
+    access_token: str,
+    log_in_tmp_file: bool = False,
+) -> tuple[str, int]:
 
     if log_in_tmp_file:
         write_tmp_file(
@@ -153,7 +184,10 @@ def get_from_api(api_url, path, access_token, log_in_tmp_file=False):
             new_file=True,
         )
 
-    resp = requests.get(api_url + '/' + path, headers=fylr_api_headers(access_token))
+    resp = requests.get(
+        url=join_url_path([api_url, path]),
+        headers=fylr_api_headers(access_token),
+    )
 
     if log_in_tmp_file:
         write_tmp_file(
@@ -168,7 +202,13 @@ def get_from_api(api_url, path, access_token, log_in_tmp_file=False):
     return resp.text, resp.status_code
 
 
-def post_to_api(api_url, path, access_token, payload=None, log_in_tmp_file=False):
+def post_to_api(
+    api_url: str,
+    path: str,
+    access_token: str,
+    payload: str = None,
+    log_in_tmp_file: bool = False,
+) -> tuple[str, int]:
 
     if log_in_tmp_file:
         write_tmp_file(
@@ -183,7 +223,9 @@ def post_to_api(api_url, path, access_token, payload=None, log_in_tmp_file=False
         )
 
     resp = requests.post(
-        api_url + '/' + path, headers=fylr_api_headers(access_token), data=payload
+        url=join_url_path([api_url, path]),
+        headers=fylr_api_headers(access_token),
+        data=payload,
     )
 
     if log_in_tmp_file:
@@ -197,3 +239,23 @@ def post_to_api(api_url, path, access_token, payload=None, log_in_tmp_file=False
         )
 
     return resp.text, resp.status_code
+
+
+def get_config_from_api(
+    api_url: str,
+    access_token: str,
+    path: str = '',
+    log_in_tmp_file: bool = False,
+) -> dict[str]:
+    content, status_code = get_from_api(
+        api_url=api_url,
+        path=join_url_path(['config', path]),
+        access_token=access_token,
+        log_in_tmp_file=log_in_tmp_file,
+    )
+    if status_code != 200:
+        raise Exception(f'request failed: {status_code}: {content}')
+    try:
+        return json.loads(content)
+    except Exception as je:
+        raise Exception(f'request body parsing failed: {str(je)}: {content}')
