@@ -60,8 +60,9 @@ def handle_exceptions(func):
 def get_json_value(
     js: dict[str],
     path: str,
-    expected: bool = False,
     split_char: str = '.',
+    expected: bool = False,
+    default=None,
 ):
     current = js
     path_parts = []
@@ -89,7 +90,7 @@ def get_json_value(
             if expected:
                 raise Exception('expected: ' + path_part)
             else:
-                return None
+                return default
 
         current = current[path_part]
 
@@ -259,3 +260,108 @@ def get_config_from_api(
         return json.loads(content)
     except Exception as je:
         raise Exception(f'request body parsing failed: {str(je)}: {content}')
+
+
+# ------------------------------------
+
+
+class TagFilter:
+
+    _any: list[int]
+    _all: list[int]
+    _not: list[int]
+
+    def __init__(self):
+        self.reset()
+
+    def __str__(self):
+        if self.is_empty():
+            return '[empty]'
+
+        s = []
+        for c in [
+            ('any', self._any),
+            ('all', self._all),
+            ('not', self._not),
+        ]:
+            if len(c[1]) == 0:
+                continue
+            s.append(f'{c[0]}: {c[1]}')
+
+        return ', '.join(s)
+
+    def reset(self):
+        self._any = []
+        self._all = []
+        self._not = []
+
+    def is_empty(self) -> bool:
+        """
+        returns true if no valid tag ids are set
+        """
+        for c in [
+            self._any,
+            self._all,
+            self._not,
+        ]:
+            if len(c) > 0:
+                return False
+        return True
+
+    def parse(self, tagfilter_js: dict) -> bool:
+        """
+        parses the tagfilter json, returns true if the tagfilter is empty
+        """
+
+        self.reset()
+
+        if not isinstance(tagfilter_js, dict):
+            return False
+
+        for c in [
+            ('any', self._any),
+            ('all', self._all),
+            ('not', self._not),
+        ]:
+            _js = tagfilter_js.get(c[0])
+            if not isinstance(_js, list):
+                continue
+            for _id in _js:
+                if not isinstance(_id, int):
+                    continue
+                c[1].append(_id)
+
+        return self.is_empty()
+
+    def match(self, tags: list[dict]) -> bool:
+        if self.is_empty():
+            return True
+
+        # collect all tag ids
+        tag_ids: set[int] = set()
+        for tag in tags:
+            tag_id = tag.get('_id')
+            if isinstance(tag_id, int):
+                tag_ids.add(tag_id)
+
+        # if any of the tags in 'not' is in the list: does not match
+        for tag_id in self._not:
+            if tag_id in tag_ids:
+                return False
+
+        # if any of the tags in 'all' is not in the list: does not match
+        for tag_id in self._all:
+            if tag_id not in tag_ids:
+                return False
+
+        # if none of the tags in 'any' is in the list: does not match
+        _any = len(self._any) == 0
+        for tag_id in self._any:
+            if tag_id in tag_ids:
+                _any = True
+                break
+        if not _any:
+            return False
+
+        # else: does match
+        return True
