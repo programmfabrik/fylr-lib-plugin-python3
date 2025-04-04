@@ -148,6 +148,25 @@ def return_error_response(error: str, log_in_tmp_file: bool = False):
     exit(1)
 
 
+def return_error_response_with_parameters(
+    error: str,
+    parameters: dict[str] = {},
+    statuscode: int = 400,
+    log_in_tmp_file: bool = False,
+):
+    error_payload = {
+        'code': error,
+        'statuscode': statuscode,
+        'parameters': parameters,
+    }
+    if log_in_tmp_file:
+        write_tmp_file(
+            'return_error_response.json', dumpjs(error_payload), new_file=True
+        )
+    stdout(dumpjs(error_payload))
+    exit(statuscode)
+
+
 def return_empty_objects():
     # special helper method: used when no changes on any objects can or should be done
     # fylr only checks and updates objects that are returned by the plugin
