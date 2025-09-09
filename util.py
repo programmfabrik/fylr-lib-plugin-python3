@@ -26,17 +26,7 @@ def write_tmp_file(
     if not dir.endswith('/'):
         dir += '/'
     with open(dir + name, 'w' if new_file else 'a') as tmp:
-        tmp.writelines(
-            map(
-                lambda l: (
-                    dumpjs(l)
-                    if (isinstance(l, dict) or isinstance(l, list))
-                    else str(l)
-                )
-                + '\n',
-                lines,
-            )
-        )
+        tmp.writelines(map(lambda l: dumpjs(l) + '\n', lines))
 
 
 def handle_exceptions(func):
@@ -58,7 +48,7 @@ def handle_exceptions(func):
 
 
 def get_json_value(
-    js: dict[str],
+    js: dict,
     path: str,
     split_char: str = '.',
     expected: bool = False,
@@ -97,7 +87,7 @@ def get_json_value(
     return current
 
 
-def dumpjs(js: dict[str], indent: int = 4) -> str:
+def dumpjs(js, indent: int = 4) -> str:
     return json.dumps(js, indent=indent)
 
 
@@ -122,35 +112,35 @@ def join_url_path(path_elements: list) -> str:
 
 def stdout(line: str, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
-        write_tmp_file('stdout.json', line, new_file=True)
+        write_tmp_file('stdout.json', [line], new_file=True)
     sys.stdout.write(line)
     sys.stdout.write('\n')
 
 
 def stderr(line: str, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
-        write_tmp_file('stderr.json', line, new_file=True)
+        write_tmp_file('stderr.json', [line], new_file=True)
     sys.stderr.write(line)
     sys.stderr.write('\n')
 
 
-def return_response(response: dict[str], log_in_tmp_file: bool = False):
+def return_response(response: dict, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
-        write_tmp_file('return_response.json', dumpjs(response), new_file=True)
+        write_tmp_file('return_response.json', [dumpjs(response)], new_file=True)
     stdout(dumpjs(response))
     exit(0)
 
 
 def return_error_response(error: str, log_in_tmp_file: bool = False):
     if log_in_tmp_file:
-        write_tmp_file('return_error_response.json', error, new_file=True)
+        write_tmp_file('return_error_response.json', [error], new_file=True)
     stderr(error)
     exit(1)
 
 
 def return_error_response_with_parameters(
     error: str,
-    parameters: dict[str] = {},
+    parameters: dict = {},
     statuscode: int = 400,
     log_in_tmp_file: bool = False,
 ):
@@ -161,7 +151,9 @@ def return_error_response_with_parameters(
     }
     if log_in_tmp_file:
         write_tmp_file(
-            'return_error_response.json', dumpjs(error_payload), new_file=True
+            'return_error_response.json',
+            [dumpjs(error_payload)],
+            new_file=True,
         )
     stdout(dumpjs(error_payload))
     exit(statuscode)
@@ -181,7 +173,7 @@ def return_empty_objects():
 # fylr api functions
 
 
-def fylr_api_headers(access_token: str) -> dict[str]:
+def fylr_api_headers(access_token: str) -> dict:
     return {
         'authorization': 'Bearer ' + access_token,
     }
@@ -226,7 +218,7 @@ def post_to_api(
     api_url: str,
     path: str,
     access_token: str,
-    payload: str = None,
+    payload: str = '',
     log_in_tmp_file: bool = False,
 ) -> tuple[str, int]:
 
@@ -245,7 +237,7 @@ def post_to_api(
     resp = requests.post(
         url=join_url_path([api_url, path]),
         headers=fylr_api_headers(access_token),
-        data=payload,
+        data=payload if payload else None,
     )
 
     if log_in_tmp_file:
@@ -266,7 +258,7 @@ def get_config_from_api(
     access_token: str,
     path: str = '',
     log_in_tmp_file: bool = False,
-) -> dict[str]:
+) -> dict:
     content, status_code = get_from_api(
         api_url=api_url,
         path=join_url_path(['config', path]),
