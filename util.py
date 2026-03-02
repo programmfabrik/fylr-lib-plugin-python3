@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 from datetime import datetime
+import io
 import json
 import sys
 import traceback
@@ -26,10 +27,50 @@ def write_tmp_file(
     if not dir.endswith('/'):
         dir += '/'
     with open(dir + name, 'w' if new_file else 'a') as tmp:
-        tmp.writelines(map(lambda l: dumpjs(l) + '\n', lines))
+        tmp.writelines(
+            map(
+                lambda l: (
+                    dumpjs(l)
+                    if (isinstance(l, dict) or isinstance(l, list))
+                    else str(l)
+                )
+                + '\n',
+                lines,
+            )
+        )
+
+
+def get_exception_traceback(e: Exception) -> list[str]:
+    """
+    recommended since python 3.10
+    """
+    file = io.StringIO()
+    traceback.print_exception(e, file=file)
+    return [str(repr(e))] + file.getvalue().rstrip().split('\n')
+
+
+def handle_exceptions_new(func):
+    """
+    recommended since python 3.10
+    """
+
+    def func_wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            trace = get_exception_traceback(e)
+
+            return_error_response('\n'.join(trace))
+
+    return func_wrapper
 
 
 def handle_exceptions(func):
+    """
+    not recommended since python 3.10 anymore
+    instead use https://docs.python.org/3/library/traceback.html#traceback.print_tb
+    """
+
     def func_wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
