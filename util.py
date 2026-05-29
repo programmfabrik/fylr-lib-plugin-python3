@@ -180,13 +180,15 @@ def return_error_response(error: str, log_in_tmp_file: bool = False):
 
 
 def return_error_response_with_parameters(
-    error: str,
+    error_code: str,
+    error_msg: str = '',
     parameters: dict = {},
     statuscode: int = 400,
     log_in_tmp_file: bool = False,
 ):
     error_payload = {
-        'code': error,
+        'code': error_code,
+        'error': error_msg,
         'statuscode': statuscode,
         'parameters': parameters,
     }
@@ -198,6 +200,61 @@ def return_error_response_with_parameters(
         )
     stdout(dumpjs(error_payload))
     exit(statuscode)
+
+
+def return_if_api_error(response: str, hint: str):
+    # parses the given response text
+    # if it is a fylr api error, it is returned directly and the plugin exits
+    # else this function returns nothing and the caller must handle the response
+    response_js = {}
+    try:
+        response_js = json.loads(response)
+    except:
+        # could not be parsed as json, nothing can be done here
+        return
+
+    # a fylr api error e.g. looks like this:
+    #
+    # {
+    #     "code": "ObjectInsufficientRights",
+    #     "error": "The operation could not be performed because you do not have the “Allowed Masks: ssequence_ot__all_fields” (mask) right for the record #0 [sequence_ot].",
+    #     "package": "ferrors",
+    #     "parameters": {
+    #         "objecttype": "sequence_ot",
+    #         "realm": "api",
+    #         "right": "mask",
+    #         "rightdisplayname": "Allowed Masks: ssequence_ot__all_fields",
+    #         "statuscode": 403,
+    #         "systemobjectid": 0
+    #     },
+    #     "realm": "api",
+    #     "statuscode": 403
+    # }
+    #
+    #   -> check that there is at least realm, code and statuscode
+
+    if response_js.get('realm') != 'api':
+        return
+
+    code = response_js.get('code', None)
+    if not isinstance(code, str):
+        return
+    if not code:
+        return
+
+    # add an optional hint where the plugin got the response to the parameters
+    parameters = response_js.get('parameters', {})
+    if hint:
+        parameters['plugin_hint'] = hint
+
+    return_error_response_with_parameters(
+        error_code=code,
+        error_msg=response_js.get('error', None),
+        parameters=parameters,
+        statuscode=response_js.get('statuscode', 400),
+    )
+
+    # this can never be reached as the plugin has already exited
 
 
 def return_empty_objects():
