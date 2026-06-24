@@ -7,7 +7,6 @@ import sys
 import traceback
 import requests
 
-
 # helper functions
 
 
@@ -199,7 +198,9 @@ def return_error_response_with_parameters(
             new_file=True,
         )
     stdout(dumpjs(error_payload))
-    exit(statuscode)
+
+    # this is the exit code fylr gets, it must be 400 so fylr can handle an api error
+    exit(400)
 
 
 def return_if_api_error(response: str, hint: str):
@@ -251,7 +252,6 @@ def return_if_api_error(response: str, hint: str):
         error_code=code,
         error_msg=response_js.get('error', None),
         parameters=parameters,
-        statuscode=response_js.get('statuscode', 400),
     )
 
     # this can never be reached as the plugin has already exited
@@ -363,12 +363,34 @@ def get_config_from_api(
         access_token=access_token,
         log_in_tmp_file=log_in_tmp_file,
     )
+
+    hint = 'get config from api'
     if status_code != 200:
-        raise Exception(f'request failed: {status_code}: {content}')
+        # parse the response, if it is an api error return it to fylr
+        return_if_api_error(content, hint)
+
+        # not an api error, some other response
+        return_error_response_with_parameters(
+            error_code=f'plugin.error.unexpected_fylr_response',
+            error_msg=f'{hint}: unexpected response from fylr',
+            parameters={
+                'response': content,
+                'statuscode': status_code,
+                'hint': hint,
+            },
+        )
+
     try:
         return json.loads(content)
     except Exception as je:
-        raise Exception(f'request body parsing failed: {str(je)}: {content}')
+        return_error_response_with_parameters(
+            error_code=f'plugin.error.parse_response_failed',
+            error_msg=f'{hint}: parsing request body failed',
+            parameters={
+                'response': content,
+                'hint': hint,
+            },
+        )
 
 
 # ------------------------------------
