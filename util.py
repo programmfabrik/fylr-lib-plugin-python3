@@ -252,6 +252,11 @@ def return_if_api_error(response: str, hint: str):
         error_code=code,
         error_msg=response_js.get('error', None),
         parameters=parameters,
+        # keep the status code of the response that fylr gave us: this error is
+        # passed through, so a 403 has to stay a 403 for the client. Only the
+        # *exit* code of the plugin has to be 400 for fylr to read this
+        # document as an api error, which is a different thing
+        statuscode=response_js.get('statuscode', 400),
     )
 
     # this can never be reached as the plugin has already exited
